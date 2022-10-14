@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "naver-stocks"
+version = "0.1.0"
+description = ""
+authors = ["Min Byeong-Guk <maxmin93@gmail.com>"]
+readme = "README.md"
+packages = [{include = "naver_stocks"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+Scrapy = "^2.6.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
