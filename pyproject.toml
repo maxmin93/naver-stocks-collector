@@ -9,6 +9,7 @@ packages = [{include = "naver_stocks"}]
 [tool.poetry.dependencies]
 python = "^3.9"
 Scrapy = "^2.6.3"
+pymongo = "^4.2.0"
 
 
 [build-system]

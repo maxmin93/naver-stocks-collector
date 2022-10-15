@@ -25,9 +25,13 @@ FEED_EXPORTERS = {
 }
 
 # https://docs.scrapy.org/en/latest/topics/feed-exports.html
-FEED_EXPORT_ENCODING = "utf-8"
-FEED_FORMAT = "json"
-FEED_URI = "output/stock_categories_%(time)s.json"
+# FEED_EXPORT_ENCODING = "utf-8"
+# FEED_FORMAT = "json"
+# FEED_URI = "output/stock_categories_%(time)s.json"
+
+# https://docs.scrapy.org/en/latest/topics/extensions.html#sample-extension
+MYEXT_ENABLED = True  # enable/disable the extension
+MYEXT_ITEMCOUNT = 100  # how many items per log message
 
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
