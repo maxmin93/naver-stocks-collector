@@ -9,8 +9,8 @@
 
 BOT_NAME = "stocks-daily-collector"
 
-SPIDER_MODULES = ["naver-stocks.spiders"]
-NEWSPIDER_MODULE = "naver-stocks.spiders"
+SPIDER_MODULES = ["naverstocks.spiders"]
+NEWSPIDER_MODULE = "naverstocks.spiders"
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -21,7 +21,7 @@ ROBOTSTXT_OBEY = False
 
 # Custom exporters
 FEED_EXPORTERS = {
-    "csv": "naver-stocks.exporters.QuoteAllCsvItemExporter",
+    "csv": "naverstocks.exporters.QuoteAllCsvItemExporter",
 }
 
 # https://docs.scrapy.org/en/latest/topics/feed-exports.html
@@ -33,6 +33,10 @@ FEED_EXPORTERS = {
 MYEXT_ENABLED = True  # enable/disable the extension
 MYEXT_ITEMCOUNT = 100  # how many items per log message
 
+# json list
+CATEGORY_LIST_FILE = "output/category_groups.jl"
+THEME_LIST_FILE = "output/theme_groups.jl"
+
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 # CONCURRENT_REQUESTS = 32
@@ -40,7 +44,9 @@ MYEXT_ITEMCOUNT = 100  # how many items per log message
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-# DOWNLOAD_DELAY = 3
+DOWNLOAD_DELAY = 0.25
+
+
 # The download delay setting will honor only one of:
 # CONCURRENT_REQUESTS_PER_DOMAIN = 16
 # CONCURRENT_REQUESTS_PER_IP = 16
