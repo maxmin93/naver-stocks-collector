@@ -4,26 +4,122 @@
 
 [Scrapy](https://docs.scrapy.org/en/latest/index.html) 로 만든 [네이버-금융](https://finance.naver.com/sise/) 국내주식 주가 크롤러 (전종목)
 
-## 1. 실행
+## 1. 설정
 
-### 1) 커맨드라인
+### 1) settings.py
+
+스파이더의 기본 설정 항목 또는 공통적으로 사용되는 항목들을 설정
+
+- spider 인스턴스가 생성된 이후 settings 참조가 가능하다
+
+```python
+BOT_NAME = "naver-stocks-collector"
+
+# 스파이더 모듈 paths (load 대상)
+SPIDER_MODULES = ["naverstocks.spiders"]
+# 스파이더 생성자 모듈
+NEWSPIDER_MODULE = "naverstocks.spiders"
+
+# 맥북 크롬 브라우져
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36"
+
+# True 이면 로봇 정책 때문에 읽지 않음
+ROBOTSTXT_OBEY = False
+
+# Custom exporters
+FEED_EXPORTERS = {
+    # 분리 기호 또는 따옴표("") 사용방식 등의 csv 옵션 변경
+    "csv": "naverstocks.exporters.QuoteAllCsvItemExporter",
+}
+
+# 스파이더 Hook 클래스에 커스텀 기능 구현
+# https://docs.scrapy.org/en/latest/topics/extensions.html#sample-extension
+MYEXT_ENABLED = True  # enable/disable the extension
+MYEXT_ITEMCOUNT = 100  # how many items per log message
+```
+
+### 2) spiders 클래스 내부에서 커스텀 설정
+
+spider 인스턴스 생성시 개별적으로 참조되는 항목들을 설정
+
+```python
+# spiders/stock_categories.py
+custom_settings = {
+    "ITEM_PIPELINES": {StockGroupPipeline: 100},
+    "FEEDS": {"output/stock-categories.csv": {"format": "csv", "overwrite": True}},
+    # 사용자 정의 설정
+    "ITEM_LIST_OUTPUT": "output/category-groups.jl",  # json list
+}
+
+# spiders/stock_themes.py
+custom_settings = {
+    "ITEM_PIPELINES": {StockGroupPipeline: 100},
+    "FEEDS": {"output/stock-themes.csv": {"format": "csv", "overwrite": True}},
+    # 사용자 정의 설정
+    "ITEM_LIST_OUTPUT": "output/theme-groups.jl",  # json list
+}
+
+# spiders/stocks.py
+custom_settings = {
+    "ITEM_PIPELINES": {StockItemPipeline: 100},
+    "FEEDS": {
+        # 파일명 생성에 사용할 수 있는 변수로 %(time)s, %(batch_id)d 등이 있지만
+        # 기호에 알맞지 않아 사용자 설정으로 파일명 설정함
+        f"output/stocks-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}.csv": {
+            "format": "csv",
+            "overwrite": True,
+        }
+    },
+    # 사용자 정의 설정
+    "CATEGORY_LIST_INPUT": "output/category-groups.jl",  # json list
+    "ITEM_LIST_OUTPUT": "output/stock-items.jl",  # json list
+}
+```
+
+## 2. 스파이더 프로젝트 구성과 실행
+
+### 1) 프로젝트 구성
+
+- {PROJECT_ROOT}
+  - scrapy.cfg : scrapy 모듈 배포를 위한 설정
+  - [naverstocks] : 실질적인 프로젝트 루트
+    - settings.py : 기본 설정 및 커스텀 설정
+    - pipelines.py : parse 처리된 item 들을 개별 처리하는 단계
+    - items.py : export 를 위한 데이터 모델
+    - exporters.py : 커스텀 exporter 기능을 설정
+    - extensions.py : scrapy 실행 단계별 hook 에 실행할 확장 기능 정의
+    - middlewares.py : spider, downloader 실행을 대체하는 커스텀 기능 정의
+    - [spiders] : 독립적인 scrapy 실행 단위
+      - stocks.py : spider 또는 crawler 클래스를 상속받아 request 와 response, parse 를 정의
+
+### 2) scrapy 실행
 
 ```bash
 $ scrapy list
 naver-stock-categories
+naver-stock-themes
+naver-stocks
 
 $ scrapy settings --get BOT_NAME
-stocks-daily-collector
+naver-stocks-collector
 
+# 시작 페이지 '네이버 금융 > 국내주식 > 업종별'
 $ scrapy crawl naver-stock-categories
-# ...
+# ==> output/stock-categories.csv
+# ==> output/category-groups.jl
 
-$ ls -l output
-stock_categories.csv
-stock_categories_2022-10-14T14-08-27.json
+# 시작 페이지 '네이버 금융 > 국내주식 > 테마별'
+$ scrapy crawl naver-stock-themes
+# ==> output/stock-themes.csv
+# ==> output/theme-groups.jl
+
+# 시작 페이지 대신 'output/category-groups.jl' 내용을 읽어서 크롤링 수행
+$ scrapy crawl naver-stocks
+# ==> output/stocks-YYYYMMDD-HHmmss.csv
+# ==> output/stock-items.jl
 ```
 
-### 1) shell 실행
+### 3) xpath 쿼리 작성시에는 shell 사용
 
 ```bash
 $ scrapy shell "https://finance.naver.com/sise/sise_group.naver\?type\=upjong"
@@ -43,10 +139,46 @@ $ scrapy shell "https://finance.naver.com/sise/sise_group.naver\?type\=upjong"
 [s]   view(response)    View response in a browser
 2022-10-13 23:32:48 [asyncio] DEBUG: Using selector: KqueueSelector
 
-In [3]: table_selector = response.xpath('(//div[@id="contentarea_left"]/table)[1]'
-   ...: )
+In [3]: table_selector = response.xpath('//div[@id="contentarea_left"]/table[contains(@class,"type_1")]')
 
 In [4]: table_selector
 Out[4]: [<Selector xpath='(//div[@id="contentarea_left"]/table)[1]' data='<table summary="업종별 전일대비 시세에 관한 표이며 등...'>]
+```
 
+## 3. 출력 파일
+
+### 1) stock-categories.csv
+
+```csv
+"desc_cnt"|"flat_cnt"|"grp_name"|"grp_url"|"incr_cnt"|"prdy_ctrt"|"stck_cnt"
+1|0|"생물공학"|"/sise/sise_group_detail.naver?type=upjong&no=286"|48|"8.43%"|49
+1|2|"생명과학도구및서비스"|"/sise/sise_group_detail.naver?type=upjong&no=262"|28|"7.98%"|31
+0|0|"양방향미디어와서비스"|"/sise/sise_group_detail.naver?type=upjong&no=300"|11|"6.37%"|11
+1|2|"우주항공과국방"|"/sise/sise_group_detail.naver?type=upjong&no=284"|13|"6.09%"|16
+4|3|"방송과엔터테인먼트"|"/sise/sise_group_detail.naver?type=upjong&no=285"|48|"5.83%"|55
+...
+```
+
+### 2) stock-themes.csv
+
+```csv
+"desc_cnt"|"flat_cnt"|"grp_name"|"grp_url"|"incr_cnt"|"prdy_ctrt"|"stck_cnt"
+0|0|"네옴시티관련주"|"/sise/sise_group_detail.naver?type=theme&no=519"|18|"8.82%"|18
+3|2|"면역항암제"|"/sise/sise_group_detail.naver?type=theme&no=389"|25|"7.6%"|30
+0|0|"원숭이두창"|"/sise/sise_group_detail.naver?type=theme&no=516"|18|"7.04%"|18
+0|0|"야놀자관련주"|"/sise/sise_group_detail.naver?type=theme&no=483"|5|"6.68%"|5
+0|0|"인터넷대표주"|"/sise/sise_group_detail.naver?type=theme&no=49"|2|"6.54%"|2
+...
+```
+
+### 3) stocks-YYYYMMDD-HHmmss.csv
+
+```csv
+"prdy_ctrt"|"prdy_vol"|"prdy_vrss"|"stck_askp"|"stck_bidp"|"stck_grp"|"stck_name"|"stck_prpr"|"stck_tr_pbmn"|"stck_url"|"stck_vol"
+"29.95%"|30242301|3250|0|14100|"생물공학"|"신라젠"|14100|160416|"/item/main.naver?code=215600"|11712693
+"29.74%"|233699|3450|0|15050|"생물공학"|"앱클론"|15050|5997|"/item/main.naver?code=174900"|422985
+"22.03%"|978448|1280|7100|7090|"생물공학"|"유틸렉스"|7090|50336|"/item/main.naver?code=263050"|7240939
+"20.66%"|378619|405|2365|2360|"생물공학"|"지니너스"|2365|24032|"/item/main.naver?code=389030"|9897013
+"18.49%"|183188|2200|14100|14050|"생물공학"|"큐리언트"|14100|4346|"/item/main.naver?code=115180"|322846
+...
 ```

@@ -7,7 +7,7 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = "stocks-daily-collector"
+BOT_NAME = "naver-stocks-collector"
 
 SPIDER_MODULES = ["naverstocks.spiders"]
 NEWSPIDER_MODULE = "naverstocks.spiders"
