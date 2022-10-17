@@ -32,6 +32,10 @@ FEED_EXPORTERS = {
     "csv": "naverstocks.exporters.QuoteAllCsvItemExporter",
 }
 
+# request 사이의 delay 설정 (기본값 0초)
+# - 까다로운 사이트의 경우 3초 이상을 주어야 할 수도 있음
+DOWNLOAD_DELAY = 0.25
+
 # 스파이더 Hook 클래스에 커스텀 기능 구현
 # https://docs.scrapy.org/en/latest/topics/extensions.html#sample-extension
 MYEXT_ENABLED = True  # enable/disable the extension
@@ -107,16 +111,95 @@ naver-stocks-collector
 $ scrapy crawl naver-stock-categories
 # ==> output/stock-categories.csv
 # ==> output/category-groups.jl
+# ...
+2022-10-17 22:07:22 [scrapy.statscollectors] INFO: Dumping Scrapy stats:
+{'downloader/request_bytes': 330,
+ 'downloader/request_count': 1,
+ 'downloader/request_method_count/GET': 1,
+ 'downloader/response_bytes': 14326,
+ 'downloader/response_count': 1,
+ 'downloader/response_status_count/200': 1,
+ 'elapsed_time_seconds': 0.254016,
+ 'feedexport/success_count/FileFeedStorage': 1,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2022, 10, 17, 13, 7, 22, 455584),
+ 'httpcompression/response_bytes': 80678,
+ 'httpcompression/response_count': 1,
+ 'item_scraped_count': 79,
+ 'log_count/DEBUG': 85,
+ 'log_count/INFO': 11,
+ 'memusage/max': 74973184,
+ 'memusage/startup': 74973184,
+ 'response_received_count': 1,
+ 'scheduler/dequeued': 1,
+ 'scheduler/dequeued/memory': 1,
+ 'scheduler/enqueued': 1,
+ 'scheduler/enqueued/memory': 1,
+ 'start_time': datetime.datetime(2022, 10, 17, 13, 7, 22, 201568)}
+2022-10-17 22:07:22 [scrapy.core.engine] INFO: Spider closed (finished)
 
 # 시작 페이지 '네이버 금융 > 국내주식 > 테마별'
 $ scrapy crawl naver-stock-themes
 # ==> output/stock-themes.csv
 # ==> output/theme-groups.jl
+# ...
+2022-10-17 22:08:20 [scrapy.statscollectors] INFO: Dumping Scrapy stats:
+{'downloader/request_bytes': 2915,
+ 'downloader/request_count': 7,
+ 'downloader/request_method_count/GET': 7,
+ 'downloader/response_bytes': 102442,
+ 'downloader/response_count': 7,
+ 'downloader/response_status_count/200': 7,
+ 'elapsed_time_seconds': 1.905756,
+ 'feedexport/success_count/FileFeedStorage': 1,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2022, 10, 17, 13, 8, 20, 732715),
+ 'httpcompression/response_bytes': 509366,
+ 'httpcompression/response_count': 7,
+ 'item_scraped_count': 264,
+ 'log_count/DEBUG': 276,
+ 'log_count/INFO': 18,
+ 'memusage/max': 75268096,
+ 'memusage/startup': 75268096,
+ 'request_depth_max': 6,
+ 'response_received_count': 7,
+ 'scheduler/dequeued': 7,
+ 'scheduler/dequeued/memory': 7,
+ 'scheduler/enqueued': 7,
+ 'scheduler/enqueued/memory': 7,
+ 'start_time': datetime.datetime(2022, 10, 17, 13, 8, 18, 826959)}
+2022-10-17 22:08:20 [scrapy.core.engine] INFO: Spider closed (finished)
 
 # 시작 페이지 대신 'output/category-groups.jl' 내용을 읽어서 크롤링 수행
 $ scrapy crawl naver-stocks
 # ==> output/stocks-YYYYMMDD-HHmmss.csv
 # ==> output/stock-items.jl
+# ...
+2022-10-17 22:09:03 [scrapy.statscollectors] INFO: Dumping Scrapy stats:
+{'downloader/request_bytes': 30514,
+ 'downloader/request_count': 79,
+ 'downloader/request_method_count/GET': 79,
+ 'downloader/response_bytes': 1277025,
+ 'downloader/response_count': 79,
+ 'downloader/response_status_count/200': 79,
+ 'elapsed_time_seconds': 24.313566,
+ 'feedexport/success_count/FileFeedStorage': 1,
+ 'finish_reason': 'finished',
+ 'finish_time': datetime.datetime(2022, 10, 17, 13, 9, 3, 293017),
+ 'httpcompression/response_bytes': 8167172,
+ 'httpcompression/response_count': 79,
+ 'item_scraped_count': 3605,
+ 'log_count/DEBUG': 3689,
+ 'log_count/INFO': 90,
+ 'memusage/max': 74776576,
+ 'memusage/startup': 74776576,
+ 'response_received_count': 79,
+ 'scheduler/dequeued': 79,
+ 'scheduler/dequeued/memory': 79,
+ 'scheduler/enqueued': 79,
+ 'scheduler/enqueued/memory': 79,
+ 'start_time': datetime.datetime(2022, 10, 17, 13, 8, 38, 979451)}
+2022-10-17 22:09:03 [scrapy.core.engine] INFO: Spider closed (finished)
 ```
 
 ### 3) xpath 쿼리 작성시에는 shell 사용
@@ -143,11 +226,15 @@ In [3]: table_selector = response.xpath('//div[@id="contentarea_left"]/table[con
 
 In [4]: table_selector
 Out[4]: [<Selector xpath='(//div[@id="contentarea_left"]/table)[1]' data='<table summary="업종별 전일대비 시세에 관한 표이며 등...'>]
+
+In [5]: exit
 ```
 
 ## 3. 출력 파일
 
-### 1) stock-categories.csv
+전일 대비 등락률(prdy_ctrt) 은 float 로 변환 되었지만, exporter 에 의해 "%" 포맷으로 출력함
+
+### 1) stock-categories.csv (79건)
 
 ```csv
 "desc_cnt"|"flat_cnt"|"grp_name"|"grp_url"|"incr_cnt"|"prdy_ctrt"|"stck_cnt"
@@ -159,7 +246,7 @@ Out[4]: [<Selector xpath='(//div[@id="contentarea_left"]/table)[1]' data='<table
 ...
 ```
 
-### 2) stock-themes.csv
+### 2) stock-themes.csv (264건)
 
 ```csv
 "desc_cnt"|"flat_cnt"|"grp_name"|"grp_url"|"incr_cnt"|"prdy_ctrt"|"stck_cnt"
@@ -171,7 +258,7 @@ Out[4]: [<Selector xpath='(//div[@id="contentarea_left"]/table)[1]' data='<table
 ...
 ```
 
-### 3) stocks-YYYYMMDD-HHmmss.csv
+### 3) stocks-YYYYMMDD-HHmmss.csv (3605건)
 
 ```csv
 "prdy_ctrt"|"prdy_vol"|"prdy_vrss"|"stck_askp"|"stck_bidp"|"stck_grp"|"stck_name"|"stck_prpr"|"stck_tr_pbmn"|"stck_url"|"stck_vol"
