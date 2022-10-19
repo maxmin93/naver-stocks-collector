@@ -269,3 +269,57 @@ In [5]: exit
 "18.49%"|183188|2200|14100|14050|"생물공학"|"큐리언트"|14100|4346|"/item/main.naver?code=115180"|322846
 ...
 ```
+
+## 4. scrapy_playwright 예제 (로그인)
+
+참고: [The Python Scrapy Playbook](https://scrapeops.io/python-scrapy-playbook/)
+
+- [유튜브 채널 - ScrapeOps](https://www.youtube.com/channel/UCWXYh1OzOoXuHKbmhPeCBZg)
+- [깃허브 python-scrapy-playbook](https://github.com/python-scrapy-playbook)
+
+### 0) [scrapy_playwright](https://github.com/scrapy-plugins/scrapy-playwright) 라이브러리
+
+- Scrapy 에서 headless 브라우저(Chromium)를 이용해 JS 렌더링을 수행
+  - [Scrapy - Using a headless browser](https://docs.scrapy.org/en/latest/topics/dynamic-content.html#using-a-headless-browser)
+- 로그인, 페이지 스크롤, 클릭 등의 동작을 수행할 수 있음
+
+### 1) quotes.py : 다음 페이지 읽기
+
+- `div.quote` 가 나올 때까지 기다리고 (page 로딩)
+  - `PageMethod("wait_for_selector", "div.quote")`
+- `next_page` 를 추가 요청한다. => 10페이지
+
+```bash
+$ scrapy crawl quotes -O output/quotes-10-pages.json
+```
+
+### 2) quotes_infinitely_scrolling.py : 무한 스크롤 페이지 읽기
+
+- `div.quote` 가 나올 때까지 기다리고 (page 로딩)
+  - `PageMethod("wait_for_selector", "div.quote")`
+- 페이지 맨 하단까지 스크롤 한다.
+  - `PageMethod("evaluate", "window.scrollBy(0, document.body.scrollHeight)")`
+- (한 페이지에 10개 항목 출력시) 11번째 `div.quote` 를 읽어들인다 (반복)
+
+```bash
+$ scrapy crawl quotes-infinitely-scrolling -O output/quotes-infinitely.json
+```
+
+### 3) quotes_basic_login.py : 로그인
+
+- `http://quotes.toscrape.com/login` 페이지 로그인 이후
+- `http://quotes.toscrape.com` 데이터 추출
+
+```bash
+$ scrapy crawl quotes-basic-login
+```
+
+### 4) quotes_after_login.py : 로그인 이후 모든 페이지 방문
+
+- `http://quotes.toscrape.com/login` 페이지 로그인 이후
+- `http://quotes.toscrape.com` 의 모든 페이지에 대해 데이터 추출
+  - 스크린샷도 10페이지 모두 출력
+
+```bash
+$ scrapy crawl quotes-after-login
+```

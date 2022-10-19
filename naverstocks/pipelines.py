@@ -112,3 +112,8 @@ class MongoDBPipeline(object):
         if self.collection:
             self.collection.database.client.close()
             self.collection = None
+
+
+class BasicScraperPipeline:
+    def process_item(self, item, spider):
+        return item

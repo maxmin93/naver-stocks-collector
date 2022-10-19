@@ -36,3 +36,10 @@ class StockItem(scrapy.Item):
     stck_vol = Field(serializer=int)  # 거래량
     stck_tr_pbmn = Field(serializer=int)  # 거래대금(백만원)
     prdy_vol = Field(serializer=int)  # 전일거래량
+
+
+class QuoteItem(scrapy.Item):
+    # define the fields for your item here like:
+    text = scrapy.Field()
+    author = scrapy.Field()
+    tags = scrapy.Field()
